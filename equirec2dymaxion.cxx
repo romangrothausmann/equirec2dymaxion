@@ -1,7 +1,16 @@
 ////program to reproject an equirectangular map to a dymaxion map
+////map expands over 5.5 triangle edges, the length of the "equator" of an icosahedron is 5 -> oX-res ~ 5.5/5*iX-res
+//02: upsample input image before projection to avoid black spots in final result:
+//    It would be cleaner to iterate over the disired ouput image and do a lookup of the input image
+//    This would need an inverse to the dymaxion projection (the triangle lookup can be inverted), which is not known so far (http://www.rwgrayprojects.com/rbfnotes/maps/graymap7.html)
+//    A workaround is to use e.g. a gnomonic projection (which is quite similar http://www.rwgrayprojects.com/rbfnotes/maps/graymap7.html) on the the dymaxion icosahedron (which is not aligned symmetrical to the earth's poles: http://www.rwgrayprojects.com/rbfnotes/maps/graymap4.html
+//    This workaround is used e.g. in this project http://mike.teczno.com/notes/slippy-faumaxion.html and also this?: http://vterrain.org/Screenshots/
+//    In order to use the current code and for a correct dymaxion projection I decided to upscale the input image
 
 
 #include <itkImageFileReader.h>
+#include <itkScaleTransform.h>
+#include <itkResampleImageFilter.h>
 #include <itkImageRegionConstIterator.h>
 #include <itkImageFileWriter.h>
 
@@ -42,13 +51,14 @@ extern void convert_s_t_p(double lng, double lat, double *x, double *y);
 
 int main(int argc, char **argv) {
 
-    if ( argc != 4 )
+    if ( argc != 5 )
         {
         std::cerr << "Missing Parameters: "
                   << argv[0]
                   << " Input_Image"
                   << " Output_Image"
-		  << " X-res"
+		  << " oX-res"
+		  << " upscale-factor (2.5 sufficient if oX-res= iX-res)"
                   << std::endl;
         return EXIT_FAILURE;
         }
@@ -62,6 +72,36 @@ int main(int argc, char **argv) {
     typedef itk::ImageFileReader<ImageType> ReaderType;
     typename ReaderType::Pointer reader = ReaderType::New();
  
+
+
+    typename ImageType::IndexType start;
+    start.Fill(0);
+    
+    typename ImageType::SizeType size;
+    //size.Fill(20);
+    unsigned int xres= atoi(argv[3]);
+
+    size[0] = xres;
+    size[1] = sqrt(3*3 - 1.5*1.5) * xres / 5.5; // ratios taken from the info of http://www.rwgrayprojects.com/rbfnotes/maps/graymap6.html
+
+    typename ImageType::RegionType region(start, size);
+
+    typename ImageType::PixelType pixelValue;
+    // pixelValue.SetRed(0);
+    // pixelValue.SetGreen(0);
+    // pixelValue.SetBlue(0);
+    //pixelValue.Fill(itk::NumericTraits<ImageType::PixelType>::ZeroValue());
+
+    typename ImageType::Pointer image = ImageType::New();
+    image->SetRegions(region);
+    image->Allocate();
+    image->FillBuffer(pixelValue);
+
+    std::cout << "Output canvas created!" << std::endl;
+ 
+
+
+
     reader->SetFileName(argv[1]);
     FilterWatcher watcherI(reader, "reading");
     try
@@ -79,42 +119,72 @@ int main(int argc, char **argv) {
         //   std::cerr << "Reader has no progress!" << std::endl;
         }
 
+    double sf= atof(argv[4]);
+    typename ImageType::SizeType iSize= reader->GetOutput()->GetLargestPossibleRegion().GetSize();
+    typename ImageType::SizeType sSize;
+    sSize[0]= iSize[0] * sf -1;
+    sSize[1]= iSize[1] * sf -1;
 
 
-    typename ImageType::IndexType start;
-    start.Fill(0);
-    
-    typename ImageType::SizeType size;
-    //size.Fill(20);
-    unsigned int xres= atoi(argv[3]);
+    typedef itk::ScaleTransform<double, Dimension> TransformType;
+    TransformType::Pointer scaleTransform = TransformType::New();
+    itk::FixedArray<double, Dimension> scale;
+    scale[0] = 1./sf;
+    scale[1] = scale[0];
+    scaleTransform->SetScale(scale);
+ 
+    itk::Point<double,2> center;
+    // center[0] = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[0]/2;
+    // center[1] = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[1]/2;
+    center[0] = 0;
+    center[1] = 0;
+    //center[1] = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[1];
+ 
+    scaleTransform->SetCenter(center);
+ 
+    typedef itk::ResampleImageFilter<ImageType, ImageType> ResampleImageFilterType;
+    ResampleImageFilterType::Pointer resampleFilter = ResampleImageFilterType::New();
+    resampleFilter->SetTransform(scaleTransform);
+    resampleFilter->SetInput(reader->GetOutput());
+    //resampleFilter->SetSize(iSize);
+    resampleFilter->SetSize(sSize);
+    FilterWatcher watcher1(resampleFilter);
+    resampleFilter->Update();
 
-    size[0] = xres;
-    size[1] = sqrt(3*3 - 1.5*1.5) * xres / 5.5; // ratios taken from the info of http://www.rwgrayprojects.com/rbfnotes/maps/graymap6.html
+    typename ImageType::Pointer eqrec_img= resampleFilter->GetOutput();
 
-    typename ImageType::RegionType region(start, size);
+    // typedef itk::ImageFileWriter<ImageType>  WriterType;
+    // typename WriterType::Pointer writer = WriterType::New();
 
-    typename ImageType::RegionType iregion= reader->GetOutput()->GetLargestPossibleRegion();
+    // FilterWatcher watcherO(writer);
+    // writer->SetFileName(argv[2]);
+    // writer->SetInput(eqrec_img);
+    // //writer->UseCompressionOn();
+    // //writer->SetUseCompression(atoi(argv[4]));
+    // try
+    //     { 
+    //     writer->Update();
+    //     }
+    // catch (itk::ExceptionObject &ex)
+    //     { 
+    //     std::cerr << ex << std::endl;
+    //     return EXIT_FAILURE;
+    //     }
+
+
+
+    typename ImageType::RegionType iregion= eqrec_img->GetLargestPossibleRegion();
     int ixres= iregion.GetSize()[0];
     int iyres= iregion.GetSize()[1];
 
-    typename ImageType::PixelType pixelValue;
-    // pixelValue.SetRed(0);
-    // pixelValue.SetGreen(0);
-    // pixelValue.SetBlue(0);
-    //pixelValue.Fill(itk::NumericTraits<ImageType::PixelType>::ZeroValue());
-
-    typename ImageType::Pointer image = ImageType::New();
-    image->SetRegions(region);
-    image->Allocate();
-    image->FillBuffer(pixelValue);
-
-    std::cout << "Output canvas created!" << std::endl;
- 
-    itk::ImageRegionConstIterator<ImageType> cit(reader->GetOutput(), reader->GetOutput()->GetLargestPossibleRegion());
+    itk::ImageRegionConstIterator<ImageType> cit(eqrec_img, iregion);
 
     typename ImageType::IndexType pixelIndex; //= {{27,29,37}}
     double lng, lat, ox, oy;
     init_stuff();//very important!!!
+
+    long N= iregion.GetNumberOfPixels();
+    long counter= 0;
 
     for (cit.GoToBegin(); !cit.IsAtEnd(); ++cit) {
 
@@ -166,14 +236,20 @@ int main(int argc, char **argv) {
 	    //printf("ix: %f; iy: %f\n", pixelIndex[0], pixelIndex[1]);
 
             }
+        counter++;
+        
+        if(!(counter%1000)){
+            fprintf(stderr, "\r%s progress: %5.1f%%", "Projection", 100.0 * counter / N);
+            std::cerr.flush();
+            }
 
         }
-    std::cerr << "Projection done." << std::endl;
+    std::cerr << " done." << std::endl;
 
     typedef itk::ImageFileWriter<ImageType>  WriterType;
     typename WriterType::Pointer writer = WriterType::New();
 
-    FilterWatcher watcherO(writer, "writing");
+    FilterWatcher watcherO(writer);
     writer->SetFileName(argv[2]);
     writer->SetInput(image);
     //writer->UseCompressionOn();
