@@ -1,3 +1,6 @@
+//01: mod of orig such that tri 11 is beside tri 10 (http://www.rwgrayprojects.com/rbfnotes/maps/graymap6.html)
+
+
 /**************************************************************/
 /*                                                            */
 /* This C program is copyrighted by  Robert W. Gray and may   */
@@ -593,8 +596,8 @@ void dymax_point(int tri, int lcd,
 
      case 10: rotate(60.0, &x, &y);
               *px = x + 2.5; *py = y + 1.0 / sqrt(3.0); break;
-     case 11: rotate(60.0, &x, &y);
-              *px = x + 3.5; *py = y + 1.0 / sqrt(3.0); break;
+     case 11: rotate(0.0, &x, &y);
+              *px = x + 3.0; *py = y + 1.0 / (2.0 * sqrt(3.0)); break;
      case 12: rotate(120.0, &x, &y);
               *px = x + 3.5; *py = y + 2.0 / sqrt(3.0); break;
      case 13: rotate(60.0, &x, &y);
