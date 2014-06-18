@@ -6,10 +6,16 @@
 //    A workaround is to use e.g. a gnomonic projection (which is quite similar http://www.rwgrayprojects.com/rbfnotes/maps/graymap7.html) on the the dymaxion icosahedron (which is not aligned symmetrical to the earth's poles: http://www.rwgrayprojects.com/rbfnotes/maps/graymap4.html
 //    This workaround is used e.g. in this project http://mike.teczno.com/notes/slippy-faumaxion.html and also this?: http://vterrain.org/Screenshots/
 //    In order to use the current code and for a correct dymaxion projection I decided to upscale the input image
+//03: make compatible with itk-4.5.1
 
+
+//todo
+// - parallelize iterator on a last comes last wirte basis
 
 #include <itkImageFileReader.h>
-#include <itkScaleTransform.h>
+#include <itkIdentityTransform.h>
+//#include <itkBSplineInterpolateImageFunction.h>
+//#include <itkNearestNeighborInterpolateImageFunction.h>
 #include <itkResampleImageFilter.h>
 #include <itkImageRegionConstIterator.h>
 #include <itkImageFileWriter.h>
@@ -87,9 +93,9 @@ int main(int argc, char **argv) {
     typename ImageType::RegionType region(start, size);
 
     typename ImageType::PixelType pixelValue;
-    // pixelValue.SetRed(0);
-    // pixelValue.SetGreen(0);
-    // pixelValue.SetBlue(0);
+    pixelValue.SetRed(0);
+    pixelValue.SetGreen(0);
+    pixelValue.SetBlue(0);
     //pixelValue.Fill(itk::NumericTraits<ImageType::PixelType>::ZeroValue());
 
     typename ImageType::Pointer image = ImageType::New();
@@ -119,37 +125,43 @@ int main(int argc, char **argv) {
         //   std::cerr << "Reader has no progress!" << std::endl;
         }
 
-    double sf= atof(argv[4]);
+    typedef double TCoordRep;
+
+    TCoordRep sf= atof(argv[4]);
     typename ImageType::SizeType iSize= reader->GetOutput()->GetLargestPossibleRegion().GetSize();
     typename ImageType::SizeType sSize;
-    sSize[0]= iSize[0] * sf -1;
+    sSize[0]= iSize[0] * sf -1; //skip last pixel row due to heavy interpolation even with NearestNeighborInterpolation
     sSize[1]= iSize[1] * sf -1;
 
+    ImageType::SpacingType outputSpacing;
+    outputSpacing[0] = reader->GetOutput()->GetSpacing()[0] / sf;
+    outputSpacing[1] = reader->GetOutput()->GetSpacing()[1] / sf;
+ 
+    TCoordRep origin[ 2 ];
+    origin[0] = 0;
+    origin[1] = 0;
 
-    typedef itk::ScaleTransform<double, Dimension> TransformType;
-    TransformType::Pointer scaleTransform = TransformType::New();
-    itk::FixedArray<double, Dimension> scale;
-    scale[0] = 1./sf;
-    scale[1] = scale[0];
-    scaleTransform->SetScale(scale);
- 
-    itk::Point<double,2> center;
-    // center[0] = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[0]/2;
-    // center[1] = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[1]/2;
-    center[0] = 0;
-    center[1] = 0;
-    //center[1] = reader->GetOutput()->GetLargestPossibleRegion().GetSize()[1];
- 
-    scaleTransform->SetCenter(center);
- 
+    ////BSpine not usable for RGB???
+    // typedef itk::BSplineInterpolateImageFunction<ImageType, TCoordRep, TCoordRep> TInterpolator;
+    // typedef itk::NearestNeighborInterpolateImageFunction<ImageType , TCoordRep> TInterpolator;
+    // TInterpolator::Pointer Interpolator = TInterpolator::New();
+    // Interpolator->SetSplineOrder(3); //bicubic
+
+
+    typedef itk::IdentityTransform<TCoordRep, 2> TransformType; 
     typedef itk::ResampleImageFilter<ImageType, ImageType> ResampleImageFilterType;
     ResampleImageFilterType::Pointer resampleFilter = ResampleImageFilterType::New();
-    resampleFilter->SetTransform(scaleTransform);
     resampleFilter->SetInput(reader->GetOutput());
+    //resampleFilter->SetTransform(scaleTransform);
+    resampleFilter->SetTransform(TransformType::New());
     //resampleFilter->SetSize(iSize);
     resampleFilter->SetSize(sSize);
+    resampleFilter->SetOutputOrigin(origin);
+    resampleFilter->SetOutputSpacing(outputSpacing);
+    //resampleFilter->SetInterpolator(Interpolator);//default: LinearInterpolateImageFunction
     FilterWatcher watcher1(resampleFilter);
-    resampleFilter->Update();
+    resampleFilter->UpdateLargestPossibleRegion();    
+    //resampleFilter->Update();
 
     typename ImageType::Pointer eqrec_img= resampleFilter->GetOutput();
 
