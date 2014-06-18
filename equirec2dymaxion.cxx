@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
  
 
     //// ratios taken from the info of http://www.rwgrayprojects.com/rbfnotes/maps/graymap6.html
-    const double xext= 5.5;
+    const double xext= 6.0;
     const double yext= sqrt(3*3 - 1.5*1.5);
     const double yextm= sqrt(4*4 - 2*2);
 
