@@ -7,7 +7,7 @@
 //    This workaround is used e.g. in this project http://mike.teczno.com/notes/slippy-faumaxion.html and also this?: http://vterrain.org/Screenshots/
 //    In order to use the current code and for a correct dymaxion projection I decided to upscale the input image
 //03: make compatible with itk-4.5.1
-
+//04: canvas extention for graypr_02.cxx: tri 11 beside tri 10 and 18 below 17
 
 //todo
 // - parallelize iterator on a last comes last wirte basis
@@ -79,17 +79,20 @@ int main(int argc, char **argv) {
     typename ReaderType::Pointer reader = ReaderType::New();
  
 
+    //// ratios taken from the info of http://www.rwgrayprojects.com/rbfnotes/maps/graymap6.html
+    const double xext= 5.5;
+    const double yext= sqrt(3*3 - 1.5*1.5);
+    const double yextm= sqrt(4*4 - 2*2);
 
-    typename ImageType::IndexType start;
-    start.Fill(0);
-    
     typename ImageType::SizeType size;
     //size.Fill(20);
     unsigned int xres= atoi(argv[3]);
 
-    size[0] = xres;
-    size[1] = sqrt(3*3 - 1.5*1.5) * xres / 5.5; // ratios taken from the info of http://www.rwgrayprojects.com/rbfnotes/maps/graymap6.html
+    typename ImageType::IndexType start;
+    start.Fill(0);
 
+    size[0] = xres;
+    size[1] = yextm * xres / xext; 
     typename ImageType::RegionType region(start, size);
 
     typename ImageType::PixelType pixelValue;
@@ -214,39 +217,20 @@ int main(int argc, char **argv) {
 
 	//printf("ox: %f; oy: %f\n", ox, oy);        
 
-	ox= ox * size[0] / 5.5;
-	oy= oy * size[1] / sqrt(3*3 - 1.5*1.5);
+	ox= ox * size[0] / xext;
+	oy= oy + yextm - yext;
+	oy= oy * size[1] / yextm;
 	oy= size[1] - oy;
         if((ox < 0) || (ox >= size[0]) || (oy < 0) || (oy >= size[1])){
             printf("Resulting coords out of bonds: x= %f [0; %f], y= %f [0;%f]\n", ox, static_cast<double>(size[0]), oy, static_cast<double>(size[1]));
             }
         else{
-
-            // pixelIndex[0]= ox;
-            // pixelIndex[1]= oy;
-
             pixelValue = cit.Get();
-
-            //pixelValue = image->GetPixel(pixelIndex); //somehow average previous values with new one
-
-	    //printf("RGB: %d,%d,%d\n", static_cast<InputComponentType>(pixelValue.GetRed()), static_cast<InputComponentType>(pixelValue.GetGreen()), static_cast<InputComponentType>(pixelValue.GetBlue()));
-	    //std::cout << "RGB: " <<  itk::NumericTraits<typename InputPixelType::ValueType>::PrintType(pixelValue.GetRed()) << "; " << itk::NumericTraits<typename InputPixelType::ValueType>::PrintType(pixelValue.GetGreen()) << "; " << itk::NumericTraits<typename InputPixelType::ValueType>::PrintType(pixelValue.GetBlue()) << std::endl;
-
-	    InputPixelType::ValueType red = pixelValue.GetRed();
-	    InputPixelType::ValueType green = pixelValue.GetGreen();
-	    InputPixelType::ValueType blue = pixelValue.GetBlue();
-	    //std::cout << "RGB: " <<  itk::NumericTraits<typename InputPixelType::ValueType>::PrintType(red) << "; " << itk::NumericTraits<typename InputPixelType::ValueType>::PrintType(green) << "; " << itk::NumericTraits<typename InputPixelType::ValueType>::PrintType(blue) << std::endl;
-
-
 
             pixelIndex[0]= ox;
             pixelIndex[1]= oy;
 
             image->SetPixel(pixelIndex, pixelValue);
-
-	    //printf("ox: %f; oy: %f\n", ox, oy);        
-	    //printf("ix: %f; iy: %f\n", pixelIndex[0], pixelIndex[1]);
-
             }
         counter++;
         

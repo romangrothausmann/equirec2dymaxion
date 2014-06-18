@@ -1,5 +1,5 @@
 //01: mod of orig such that tri 11 is beside tri 10 (http://www.rwgrayprojects.com/rbfnotes/maps/graymap6.html)
-
+//02: 18 below 17 (canvas y-extention necessary!!!)
 
 /**************************************************************/
 /*                                                            */
@@ -620,7 +620,7 @@ void dymax_point(int tri, int lcd,
      case 17: rotate(0.0, &x, &y);
 	      *px = x + 1.0; *py = y + 1.0 / (2.0 * sqrt(3.0)); break;
      case 18: rotate(120.0, &x, &y);
-              *px = x + 4.0; *py = y + 1.0 / (2.0 * sqrt(3.0)); break;
+       *px = -x + 1.0; *py = -(y + 1.0 / (2.0 * sqrt(3.0))); break;
      case 19: rotate(120.0, &x, &y);
               *px = x + 4.5; *py = y + 2.0 / sqrt(3.0); break;
      case 20: rotate(300.0, &x, &y);
