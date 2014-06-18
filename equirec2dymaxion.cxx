@@ -96,9 +96,9 @@ int main(int argc, char **argv) {
     typename ImageType::RegionType region(start, size);
 
     typename ImageType::PixelType pixelValue;
-    pixelValue.SetRed(0);
-    pixelValue.SetGreen(0);
-    pixelValue.SetBlue(0);
+    pixelValue.SetRed(255);
+    pixelValue.SetGreen(255);
+    pixelValue.SetBlue(255);
     //pixelValue.Fill(itk::NumericTraits<ImageType::PixelType>::ZeroValue());
 
     typename ImageType::Pointer image = ImageType::New();
@@ -198,8 +198,8 @@ int main(int argc, char **argv) {
     double lng, lat, ox, oy;
     init_stuff();//very important!!!
 
-    long N= iregion.GetNumberOfPixels();
-    long counter= 0;
+    typename ImageType::IndexValueType N= iregion.GetNumberOfPixels();
+    typename ImageType::IndexValueType counter= 0;
 
     for (cit.GoToBegin(); !cit.IsAtEnd(); ++cit) {
 

@@ -1,5 +1,7 @@
 //01: mod of orig such that tri 11 is beside tri 10 (http://www.rwgrayprojects.com/rbfnotes/maps/graymap6.html)
 //02: 18 below 17 (canvas y-extention necessary!!!)
+//03: modified LCDs (canvas x-extention necessary!!!)
+//04: modified LCDs for A4 printing (canvas x-extention necessary!!!)
 
 /**************************************************************/
 /*                                                            */
@@ -593,7 +595,6 @@ void dymax_point(int tri, int lcd,
 	      *px = x + 2.0; *py = y + 1.0 / (2.0 * sqrt(3.0));
 	      }
 	      break;
-
      case 10: rotate(60.0, &x, &y);
               *px = x + 2.5; *py = y + 1.0 / sqrt(3.0); break;
      case 11: rotate(0.0, &x, &y);
@@ -606,7 +607,7 @@ void dymax_point(int tri, int lcd,
 	      *px = x + 4.0; *py = y + 7.0 / (2.0 * sqrt(3.0)) ; break;
      case 15: rotate(0.0, &x, &y);
 	      *px = x + 5.0; *py = y + 7.0 / (2.0 * sqrt(3.0)) ; break;
-     case 16: if (lcd < 4)
+     case 16: if (lcd == 2 || lcd == 3 || lcd == 4)
 	      {
 		rotate(60.0, &x, &y);
 		*px = x + 0.5; *py = y + 1.0 / sqrt(3.0);
